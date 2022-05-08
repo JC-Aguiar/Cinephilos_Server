@@ -20,6 +20,7 @@ import javax.validation.Valid;
 public class UserController extends MasterController
     <Integer, UserEntity, UserDtoRequest, UserDtoResponse, UserController> {
 
+    @Autowired
     private final UserService userService;
 
     @Autowired

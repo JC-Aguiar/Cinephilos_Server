@@ -9,9 +9,8 @@ import br.com.jcaguiar.cinephiles.util.ConsoleLog;
 import br.com.jcaguiar.cinephiles.util.Download;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonSyntaxException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataAccessException;
+import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,19 +23,17 @@ import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 
 @Service
 public class MovieService extends MasterService<Integer, MovieEntity, MovieService> {
 
-    @Autowired
-    private GenreService genreService;
-    @Autowired
-    private ProducerService producerService;
-    @Autowired
-    private PostersRepository posterRepository;
-    @Autowired
-    private Gson gson;
+    @Autowired private PostersService postersService;
+    @Autowired private GenreService genreService;
+    @Autowired private ProducerService producerService;
+    @Autowired private Gson gson;
+    private final Instant startTime = Instant.now();
     private final MovieRepository dao;
     private final static List<String> TMDB_KEYS = new ArrayList<String>(){{
         add("title");                       //-> title
@@ -116,79 +113,16 @@ public class MovieService extends MasterService<Integer, MovieEntity, MovieServi
         return moviesJson;
     }
 
-    public ProcessLine<MovieEntity> persistJsonTMDB(@NotNull ProcessLine<MovieDtoTMDB> movieJson) {
-        try {
-            movieJson.compareObjects(MovieDtoTMDB.class);
-            return proxy().persistJsonTMDB(movieJson.getObject().orElseThrow());
-        } catch (Exception e) {
-            return ProcessLine.error(e.getLocalizedMessage());
-        }
-    }
-
-    @ConsoleLog
-    //MovieEntity
-    private ProcessLine<MovieEntity> persistJsonTMDB(@NotNull MovieDtoTMDB movieJson) {
-        try {
-            // Single attributes
-            final String title = movieJson.getTitle();
-            final String synopsis = movieJson.getOverview();
-            final String tagline = movieJson.getTagline();
-            final Date premier = new SimpleDateFormat("yyyy-MM-dd")
-                .parse(movieJson.getRelease_date());
-            final long runTime = Long.parseLong(movieJson.getRuntime());
-            final Duration duration = Duration.ofMinutes(runTime);
-            // Poster
-            final String postersString =
-                "https://image.tmdb.org/t/p/w600_and_h900_bestv2"
-                + movieJson.getPoster_path();
-            final byte[] poster = Download.from(postersString); //todo: link builder OK. But the download system is failing.
-            final List<PostersEntity> posters = posterRepository.saveAndFlush(
-                PostersEntity.builder()
-                    .url(postersString)
-                    .image(poster)
-                    .build());
-            // Genres
-            final List<String> possibleGenres = movieJson.getGenres()
-                .stream()
-                .map(MovieDtoTMDBGenre::getName)
-                .toList();
-            final List<GenreEntity> genres = possibleGenres.stream()
-                .map(genreService::loadOrSave).toList();
-            // Producers
-            final List<String> possibleProducers = movieJson.getProduction_companies()
-                .stream()
-                .map(MovieDtoTMDBProductors::getName)
-                .toList();
-            final List<ProducerEntity> producers = possibleProducers.stream()
-                .map(producerService::loadOrSave).toList();
-            final MovieEntity movie = MovieEntity.builder()
-                .title(title)
-                .synopsis(synopsis)
-                .tagline(tagline)
-                .premiereDate(premier)
-                .duration(duration)
-                .build();
-            //Result
-            movie.addGenres(genres).addProducers(producers).addPosters(posters);
-            return ProcessLine.success(dao.saveAndFlush(movie));
-
-            //Exception
-        } catch (ParseException | NumberFormatException | IOException | DataAccessException e) {
-            System.out.println("MovieEntity persist error: " + e.getLocalizedMessage());
-            return ProcessLine.error(e.getLocalizedMessage());
-        }
-    }
-
     @ConsoleLog
     //JsonObject
     public ProcessLine<MovieDtoTMDB> parseMapToDto(@NotNull Map<String, Object> file) {
         try {
             final String stringFile = gson.toJson(file);
             final MovieDtoTMDB dtoTMDB = gson.fromJson(stringFile, MovieDtoTMDB.class);
-            return ProcessLine.success(dtoTMDB);
+            return ProcessLine.success(startTime, dtoTMDB);
         } catch (Exception e) {
             System.out.println("Parse Map to TMDB error: " + e.getLocalizedMessage());
-            return ProcessLine.error(e.getLocalizedMessage());
+            return ProcessLine.error(startTime, e.getLocalizedMessage());
         }
     }
 
@@ -198,34 +132,102 @@ public class MovieService extends MasterService<Integer, MovieEntity, MovieServi
         try {
             final String jsonString = new String(file.getBytes(), StandardCharsets.UTF_8);
             final JsonObject json = gson.fromJson(jsonString, JsonObject.class);
-            return ProcessLine.success(json);
+            return ProcessLine.success(startTime, json);
         } catch (IOException e) {
             System.out.println("Parse MultipartFile to Json error: " + e.getLocalizedMessage());
             //final JsonObject json =  gson.fromJson(" ", JsonObject.class);
-            return ProcessLine.error(e.getLocalizedMessage());
+            return ProcessLine.error(startTime, e.getLocalizedMessage());
         }
     }
 
+    @ConsoleLog
     public ProcessLine<MovieDtoTMDB> parseJsonToDto(@NotNull ProcessLine<JsonObject> json) {
         try {
-            json.compareObjects(JsonObject.class);
-            return proxy().parseJsonToDto(json.getObject().orElseThrow());
+            json.checkStatus();
+            json.compareObjects(JsonObject.class); //TODO: COMPARE AND GET!
+            final JsonObject jsonObj = json.getObject();
+            final MovieDtoTMDB movieDto = proxy().parseJsonToDto(jsonObj);
+            return ProcessLine.success(startTime, movieDto);
         } catch (Exception e) {
-            return ProcessLine.error(e.getLocalizedMessage());
+            System.out.println("Parse Json to TMDB error: " + e.getLocalizedMessage());
+            return ProcessLine.error(startTime, e.getLocalizedMessage());
         }
     }
 
     @ConsoleLog
     //MovieDtoTMDB
-    private ProcessLine<MovieDtoTMDB> parseJsonToDto(@NotNull JsonObject json) {
+    private MovieDtoTMDB parseJsonToDto(@NotNull JsonObject json) {
+            return new Gson().fromJson(json, MovieDtoTMDB.class);
+    }
+
+    @ConsoleLog
+    public ProcessLine<MovieEntity> persistDtoTMDB(@NotNull ProcessLine<MovieDtoTMDB> movieJson) {
         try {
-            final MovieDtoTMDB dto = gson.fromJson(json, MovieDtoTMDB.class);
-            return ProcessLine.success(dto);
-        } catch (JsonSyntaxException e) {
-            System.out.println("Parse Json to TMDB error: " + e.getLocalizedMessage());
-            //final MovieDtoTMDB dto = new MovieDtoTMDB();
-            return ProcessLine.error(e.getLocalizedMessage());
+            movieJson.checkStatus();
+            movieJson.compareObjects(MovieDtoTMDB.class);
+            final MovieDtoTMDB movieDto =  movieJson.getObject();
+            final MovieEntity movie = proxy().persistDtoTMDB(movieDto);
+            return ProcessLine.success(startTime, movie);
+        } catch (Exception e) {
+            System.out.println("Persist MovieEntity error: " + e.getLocalizedMessage());
+            return ProcessLine.error(startTime, e.getLocalizedMessage());
         }
+    }
+
+    @ConsoleLog
+    //MovieEntity
+    private MovieEntity persistDtoTMDB(@NotNull MovieDtoTMDB movieJson)
+    throws ParseException, IOException {
+        //        try {
+        // Single attributes
+        final String title = movieJson.getTitle();
+        final String synopsis = movieJson.getOverview();
+        final String tagline = movieJson.getTagline();
+        final Date premier = new SimpleDateFormat("yyyy-MM-dd")
+            .parse(movieJson.getRelease_date());
+        final long runTime = Long.parseLong(movieJson.getRuntime());
+        final Duration duration = Duration.ofMinutes(runTime);
+        // Poster
+        final String postersString =
+            "https://image.tmdb.org/t/p/w600_and_h900_bestv2"
+                + movieJson.getPoster_path();
+        final byte[] poster = Download.from(postersString); //todo: link builder OK. But the download system is failing.
+        final PostersEntity postersEntity = PostersEntity.builder()
+            .url(postersString)
+            .image(poster)
+            .build();
+        final List<PostersEntity> posters = new ArrayList<>();
+        posters.add(postersService.saveAndFlush(postersEntity));
+        // Genres
+        final List<String> possibleGenres = movieJson.getGenres()
+            .stream()
+            .map(MovieDtoTMDBGenre::getName)
+            .toList();
+        final List<GenreEntity> genres = possibleGenres.stream()
+            .map(genreService::loadOrSave).toList();
+        // Producers
+        final List<String> possibleProducers = movieJson.getProduction_companies()
+            .stream()
+            .map(MovieDtoTMDBProductors::getName)
+            .toList();
+        final List<ProducerEntity> producers = possibleProducers.stream()
+            .map(producerService::loadOrSave).toList();
+        final MovieEntity movie = MovieEntity.builder()
+            .title(title)
+            .synopsis(synopsis)
+            .tagline(tagline)
+            .premiereDate(premier)
+            .duration(duration)
+            .build();
+        //Result
+        movie.addGenres(genres).addProducers(producers).addPosters(posters);
+        return dao.saveAndFlush(movie);
+        //
+        //            //Exception
+        //        } catch (ParseException | NumberFormatException | IOException | DataAccessException e) {
+        //            System.out.println("MovieEntity persist error: " + e.getLocalizedMessage());
+        //            return ProcessLine.error(e.getLocalizedMessage());
+        //        }
     }
 
     //todo: remove this in production

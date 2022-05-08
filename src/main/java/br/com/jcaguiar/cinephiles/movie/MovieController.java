@@ -5,7 +5,7 @@ import br.com.jcaguiar.cinephiles.master.MasterController;
 import br.com.jcaguiar.cinephiles.master.MasterProcess;
 import br.com.jcaguiar.cinephiles.master.ProcessLine;
 import br.com.jcaguiar.cinephiles.util.ConsoleLog;
-import com.google.gson.Gson;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +23,7 @@ import java.util.Map;
 public class MovieController extends MasterController
     <Integer, MovieEntity, MovieDtoRequest, MovieDtoResponse, MovieController> {
 
+    @Autowired
     private final MovieService service;
 
     public MovieController(MovieService service) {
@@ -127,25 +128,30 @@ public class MovieController extends MasterController
 
     //TODO: CREATE HANDLE RESPONSE AGAINST DUPLICATED MOVIES
     // org.postgresql.util.PSQLException
-
     //POST: INSERT ONE FILE
     @ConsoleLog
-    @PostMapping(value = "add/one/tmdb", consumes = {"application/json", "text/plain"})
-    public ResponseEntity<?> addOne(final @RequestBody Map<String, Object> file) {
+    @PostMapping(value = "add/one/tmdb", params = {"page", "itens"}, consumes = {"application/json", "text/plain"})
+    public ResponseEntity<?> addOne(final @RequestBody Map<String, Object> file,
+        @RequestParam(name = "page", defaultValue = "0") int page,
+        @RequestParam(name = "itens", defaultValue = "12") int itens) {
         final ProcessLine<MovieDtoTMDB> dtoTMDB = service.parseMapToDto(file);
-        final ProcessLine<MovieEntity> movie = service.persistJsonTMDB(dtoTMDB);
+        final ProcessLine<MovieEntity> movie = service.persistDtoTMDB(dtoTMDB);
         final MasterProcess<MovieEntity> process = new MasterProcess<>(movie);
         return new ResponseEntity<>(process, HttpStatus.OK);
     }
 
     //POST: INSERT MANY FILES
     @ConsoleLog
-    @PostMapping(value = "add/many/tmdb", consumes = {"application/json", "text/plain", "multipart/form-data"})
-    public ResponseEntity<?> addAll(@RequestParam("files") List<MultipartFile> files) {
+    @PostMapping(value = "add/many/tmdb", consumes = {"multipart/form-data"})
+    public ResponseEntity<?> addAll(
+        @RequestParam("files") List<MultipartFile> files,
+        @RequestParam(name = "page", defaultValue = "0") int page,
+        @RequestParam(name = "itens", defaultValue = "12") int itens) {
+        final Pageable pageConfig = PageRequest.of(page, itens, Sort.unsorted()); //TODO: UNUSED? (!)
         final List<ProcessLine<MovieEntity>> movies = files.stream()
             .map(service::parseFileToJson)
             .map(service::parseJsonToDto)
-            .map(service::persistJsonTMDB)
+            .map(service::persistDtoTMDB)
             .toList();
         final MasterProcess<MovieEntity> process = new MasterProcess<>(movies);
         return new ResponseEntity<>(process, HttpStatus.OK);

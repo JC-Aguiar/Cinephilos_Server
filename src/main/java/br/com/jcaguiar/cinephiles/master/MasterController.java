@@ -30,10 +30,8 @@ public abstract class MasterController<
     ID, ENTITY extends MasterEntity, REQUEST extends MasterDtoRequest,
     RESPONSE extends MasterDtoResponse, THIS extends MasterController> {
 
-    @Autowired
-    private ModelMapper modelMapper;
-    @Getter
-    private final MasterService service;
+    @Autowired private ModelMapper modelMapper;
+    @Getter private final MasterService service;
     private final Type entityClass;
     private final Type requestClass;
     private final Type responseClass;
@@ -44,7 +42,7 @@ public abstract class MasterController<
         ExampleMatcher.matchingAny().withIgnoreNullValues().withIgnoreCase();
 
     // A constructor that will initialize the fields of the class.
-    public MasterController(MasterService service) {
+    public MasterController(@NotNull MasterService service) {
         this.service = service;
         final Type[] types = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments();
         this.entityClass = types[1];
@@ -88,7 +86,7 @@ public abstract class MasterController<
      * @param response The response object that is returned from the API call.
      * @return The entity that was mapped from the response.
      */
-    public ENTITY parseToEntity(RESPONSE response) {
+    public ENTITY parseToEntity(@NotNull RESPONSE response) {
         return modelMapper.map(response, (Type) entityClass);
     }
 
@@ -98,7 +96,7 @@ public abstract class MasterController<
      * @param request The request object that is being mapped to an entity.
      * @return The mapped entity.
      */
-    public ENTITY parseToEntity(REQUEST request) {
+    public ENTITY parseToEntity(@NotNull REQUEST request) {
         return modelMapper.map(request, (Type) entityClass);
     }
 
@@ -149,7 +147,8 @@ public abstract class MasterController<
     @ConsoleLog
     @GetMapping(path = "/{var}/{value}")
     public ResponseEntity<?> call(
-        @PathVariable @NotBlank String var, @PathVariable @NotBlank String value,
+        @PathVariable @NotBlank String var,
+        @PathVariable @NotBlank String value,
         @RequestParam(name = "page", defaultValue = "0") int page,
         @RequestParam(name = "itens", defaultValue = "12") int itens)
     throws InvocationTargetException, IllegalAccessException {
