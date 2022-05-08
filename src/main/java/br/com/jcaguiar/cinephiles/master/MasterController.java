@@ -31,7 +31,7 @@ public abstract class MasterController<
     RESPONSE extends MasterDtoResponse, THIS extends MasterController> {
 
     @Autowired private ModelMapper modelMapper;
-    @Getter private final MasterService service;
+    @Getter private MasterService service;
     private final Type entityClass;
     private final Type requestClass;
     private final Type responseClass;
