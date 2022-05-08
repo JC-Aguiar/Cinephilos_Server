@@ -29,12 +29,15 @@ import java.util.*;
 @Service
 public class MovieService extends MasterService<Integer, MovieEntity, MovieService> {
 
-    @Autowired private PostersService postersService;
-    @Autowired private GenreService genreService;
-    @Autowired private ProducerService producerService;
+    @Autowired
+    private GenreService genreService;
+    @Autowired
+    private ProducerService producerService;
+    @Autowired
+    private PostersRepository posterRepository;
+    private final MovieRepository dao;
     @Autowired private Gson gson;
     private final Instant startTime = Instant.now();
-    private final MovieRepository dao;
     private final static List<String> TMDB_KEYS = new ArrayList<String>(){{
         add("title");                       //-> title
         add("overview");                    //-> synopsis
@@ -187,17 +190,35 @@ public class MovieService extends MasterService<Integer, MovieEntity, MovieServi
             .parse(movieJson.getRelease_date());
         final long runTime = Long.parseLong(movieJson.getRuntime());
         final Duration duration = Duration.ofMinutes(runTime);
-        // Poster
+
+        // Poster imagem from origin (URL + File)
         final String postersString =
             "https://image.tmdb.org/t/p/w600_and_h900_bestv2"
                 + movieJson.getPoster_path();
         final byte[] poster = Download.from(postersString); //todo: link builder OK. But the download system is failing.
-        final PostersEntity postersEntity = PostersEntity.builder()
-            .url(postersString)
-            .image(poster)
-            .build();
+
+        //TODO: TESTE!
+        // Poster
+        final PostersEntity postersEntity = posterRepository.saveAndFlush(
+            PostersEntity.builder()
+                         .url(postersString)
+                         .image(poster)
+                         .build());
         final List<PostersEntity> posters = new ArrayList<>();
-        posters.add(postersService.saveAndFlush(postersEntity));
+        posters.add(postersEntity);
+//        // Poster
+//        final String postersString =
+//            "https://image.tmdb.org/t/p/w600_and_h900_bestv2"
+//                + movieJson.getPoster_path();
+//        final byte[] poster = Download.from(postersString); //todo: link builder OK. But the download system is failing.
+//        final PostersEntity postersEntity = PostersEntity.builder()
+//            .url(postersString)
+//            .image(poster)
+//            .build();
+//        final List<PostersEntity> posters = new ArrayList<>();
+//        posters.add(postersService.saveAndFlush(postersEntity));
+        //TODO: TESTE!
+
         // Genres
         final List<String> possibleGenres = movieJson.getGenres()
             .stream()
