@@ -14,10 +14,9 @@ import java.util.Objects;
 import java.util.Optional;
 
 @Service
-public abstract class MasterService<
-    ID, ENTITY, THIS extends  MasterService> {
+public abstract class MasterService<ID, ENTITY, THIS extends MasterService> {
 
-    private final JpaRepository<ENTITY, ID> dao;
+    @Autowired private final JpaRepository<ENTITY, ID> dao;
 
     // A constructor that injects the `dao` object.
     public MasterService(@NotNull JpaRepository dao) {

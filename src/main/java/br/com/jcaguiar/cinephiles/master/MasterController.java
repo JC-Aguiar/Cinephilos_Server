@@ -2,6 +2,7 @@ package br.com.jcaguiar.cinephiles.master;
 
 import br.com.jcaguiar.cinephiles.util.ConsoleLog;
 import lombok.Getter;
+import lombok.Setter;
 import org.modelmapper.ModelMapper;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,12 +27,12 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-public abstract class MasterController<
-    ID, ENTITY extends MasterEntity, REQUEST extends MasterDtoRequest,
+public abstract class MasterController
+    <ID, ENTITY extends MasterEntity, REQUEST extends MasterDtoRequest,
     RESPONSE extends MasterDtoResponse, THIS extends MasterController> {
 
     @Autowired private ModelMapper modelMapper;
-    @Getter private MasterService service;
+    @Getter private final MasterService service;
     private final Type entityClass;
     private final Type requestClass;
     private final Type responseClass;

@@ -6,10 +6,9 @@ import org.springframework.stereotype.Service;
 import javax.validation.constraints.NotNull;
 
 @Service
-public class PostersService {
+public class PosterService {
 
-    @Autowired
-    PostersRepository dao;
+    @Autowired private PicturesRepository dao;
 
     public PostersEntity saveAndFlush(@NotNull PostersEntity poster) {
         return dao.saveAndFlush(poster);

@@ -10,7 +10,6 @@ import br.com.jcaguiar.cinephiles.util.Download;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,13 +28,9 @@ import java.util.*;
 @Service
 public class MovieService extends MasterService<Integer, MovieEntity, MovieService> {
 
-    @Autowired
-    private GenreService genreService;
-    @Autowired
-    private ProducerService producerService;
-    @Autowired
-    private PostersRepository posterRepository;
-    private final MovieRepository dao;
+    @Autowired private final MovieRepository dao;
+    private final GenreService genreService;
+    private final ProducerService producerService;
     @Autowired private Gson gson;
     private final Instant startTime = Instant.now();
     private final static List<String> TMDB_KEYS = new ArrayList<String>(){{
@@ -50,9 +45,12 @@ public class MovieService extends MasterService<Integer, MovieEntity, MovieServi
         add("runtime");                     //-> duration
     }};
 
-    public MovieService(MovieRepository dao) {
+    public MovieService
+    (@NotNull MovieRepository dao, @NotNull GenreService genreService, @NotNull ProducerService producerService) {
         super(dao);
         this.dao = dao;
+        this.genreService = genreService;
+        this.producerService = producerService;
     }
 
     @ConsoleLog
@@ -173,6 +171,7 @@ public class MovieService extends MasterService<Integer, MovieEntity, MovieServi
             return ProcessLine.success(startTime, movie);
         } catch (Exception e) {
             System.out.println("Persist MovieEntity error: " + e.getLocalizedMessage());
+            e.printStackTrace();
             return ProcessLine.error(startTime, e.getLocalizedMessage());
         }
     }
@@ -181,6 +180,9 @@ public class MovieService extends MasterService<Integer, MovieEntity, MovieServi
     //MovieEntity
     private MovieEntity persistDtoTMDB(@NotNull MovieDtoTMDB movieJson)
     throws ParseException, IOException {
+//        System.out.println("GenreService: " + genreService);
+//        System.out.println("ProducerService: " + producerService);
+//        System.out.println("PosterService: " + posterService);
         //        try {
         // Single attributes
         final String title = movieJson.getTitle();
@@ -190,7 +192,6 @@ public class MovieService extends MasterService<Integer, MovieEntity, MovieServi
             .parse(movieJson.getRelease_date());
         final long runTime = Long.parseLong(movieJson.getRuntime());
         final Duration duration = Duration.ofMinutes(runTime);
-
         // Poster imagem from origin (URL + File)
         final String postersString =
             "https://image.tmdb.org/t/p/w600_and_h900_bestv2"
@@ -199,13 +200,18 @@ public class MovieService extends MasterService<Integer, MovieEntity, MovieServi
 
         //TODO: TESTE!
         // Poster
-        final PostersEntity postersEntity = posterRepository.saveAndFlush(
-            PostersEntity.builder()
-                         .url(postersString)
-                         .image(poster)
-                         .build());
-        final List<PostersEntity> posters = new ArrayList<>();
-        posters.add(postersEntity);
+        final PostersEntity postersEntityBeta = PostersEntity
+            .builder()
+            .url(postersString)
+            .image(poster)
+            .build();
+        final PostersEntity postersEntity = postersEntityBeta;//posterService.saveAndFlush(postersEntityBeta);
+//            posterRepository.saveAndFlush(
+//            PostersEntity.builder()
+//                         .url(postersString)
+//                         .image(poster)
+//                         .build());
+        final List<PostersEntity> posters = List.of(postersEntity);
 //        // Poster
 //        final String postersString =
 //            "https://image.tmdb.org/t/p/w600_and_h900_bestv2"
@@ -243,12 +249,6 @@ public class MovieService extends MasterService<Integer, MovieEntity, MovieServi
         //Result
         movie.addGenres(genres).addProducers(producers).addPosters(posters);
         return dao.saveAndFlush(movie);
-        //
-        //            //Exception
-        //        } catch (ParseException | NumberFormatException | IOException | DataAccessException e) {
-        //            System.out.println("MovieEntity persist error: " + e.getLocalizedMessage());
-        //            return ProcessLine.error(e.getLocalizedMessage());
-        //        }
     }
 
     //todo: remove this in production

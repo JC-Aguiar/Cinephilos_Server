@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -23,10 +24,9 @@ import java.util.Map;
 public class MovieController extends MasterController
     <Integer, MovieEntity, MovieDtoRequest, MovieDtoResponse, MovieController> {
 
-    @Autowired
-    private final MovieService service;
+    @Autowired private final MovieService service;
 
-    public MovieController(MovieService service) {
+    public MovieController(@NotNull MovieService service) {
         super(service);
         this.service = service;
         try {

@@ -2,6 +2,7 @@ package br.com.jcaguiar.cinephiles.company;
 
 import br.com.jcaguiar.cinephiles.master.MasterService;
 import br.com.jcaguiar.cinephiles.util.ConsoleLog;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.validation.constraints.NotBlank;
@@ -11,7 +12,7 @@ import java.util.Optional;
 @Service
 public class ProducerService extends MasterService<Integer, ProducerEntity, ProducerService> {
 
-    private final ProducerRepository dao;
+    @Autowired private final ProducerRepository dao;
 
     public ProducerService(@NotNull ProducerRepository dao) {
         super(dao);

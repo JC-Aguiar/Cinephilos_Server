@@ -14,21 +14,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
 
 @RestController
 @RequestMapping("/user")
 public class UserController extends MasterController
     <Integer, UserEntity, UserDtoRequest, UserDtoResponse, UserController> {
 
-    @Autowired
-    private final UserService userService;
+    @Autowired private final UserService service;
+    @Autowired private ModelMapper modelMapper;
 
-    @Autowired
-    private ModelMapper modelMapper;
-
-    public UserController(UserService service) {
+    public UserController(@NotNull UserService service) {
         super(service);
-        this.userService = service;
+        this.service = service;
         printInfo();
     }
 
@@ -55,7 +53,7 @@ public class UserController extends MasterController
         final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
         final UserEntity user = modelMapper.map(userRequest, UserEntity.class);
         user.setPassword( encoder.encode(userRequest.getPassword()) );
-        userService.addUser(user);
+        service.addUser(user);
         final UserDtoResponse userResponse = modelMapper.map(user, UserDtoResponse.class);
         return new ResponseEntity<>(userResponse, HttpStatus.OK);
     }

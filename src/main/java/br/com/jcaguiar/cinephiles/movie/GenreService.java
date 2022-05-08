@@ -3,6 +3,7 @@ package br.com.jcaguiar.cinephiles.movie;
 import br.com.jcaguiar.cinephiles.enums.GenreEnum;
 import br.com.jcaguiar.cinephiles.master.MasterService;
 import br.com.jcaguiar.cinephiles.util.ConsoleLog;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.validation.constraints.NotBlank;
@@ -12,9 +13,9 @@ import java.util.Optional;
 @Service
 public class GenreService extends MasterService<Integer, GenreEntity, GenreService> {
 
-    private GenreRepository dao;
+    @Autowired private final GenreRepository dao;
 
-    public GenreService(GenreRepository dao) {
+    public GenreService(@NotNull GenreRepository dao) {
         super(dao);
         this.dao = dao;
     }
